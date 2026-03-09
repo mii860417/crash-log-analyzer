@@ -13,7 +13,7 @@ This tool helps developers and QA engineers extract useful information from cras
 The goal of this project is to provide a lightweight crash log analyzer that can help quickly identify potential root causes.
 
 ## Demo
-
+https://crash-log-analyzer.streamlit.app
 
 ## Features
 
