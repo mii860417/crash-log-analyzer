@@ -2,12 +2,6 @@ import os
 import re
 import streamlit as st
 
-st.markdown(
-    """
-    <meta name="google-site-verification" content="zH_6P7H8iyAqdvtVvzdsnLC1nUuAj5GKdbb0QM076kQ" />
-    """,
-    unsafe_allow_html=True
-)
 
 st.set_page_config(page_title="Crash Log Analyzer", page_icon="🛠️", layout="centered")
 
