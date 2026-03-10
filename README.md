@@ -49,6 +49,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+
 ### 3. Open in browser
 
 ```bash
@@ -56,3 +57,12 @@ Streamlit will usually open this local URL:
 
 http://localhost:8501
 ```
+
+# 🔗 Related Tools
+
+You may also be interested in:
+
+- Stack Trace Root Cause Finder :
+  https://stack-trace-root-cause-finder.streamlit.app
+
+These tools help developers debug logs more efficiently.
