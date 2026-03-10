@@ -188,3 +188,5 @@ if analyze_clicked:
 
         st.divider()
         st.caption(f"Total analyses: {usage_count}")
+
+st.caption("If this tool helped you, please ⭐ the GitHub repo.")
