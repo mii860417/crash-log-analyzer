@@ -1,6 +1,6 @@
 # Crash Log Analyzer
 
-A simple Streamlit tool to analyze crash logs.
+Simple Android crash log analyzer built with Streamlit.
 
 This tool helps developers and QA engineers extract useful information from crash logs, such as:
 
