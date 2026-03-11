@@ -64,6 +64,6 @@ You may also be interested in:
 
 - Stack Trace Root Cause Finder :
   https://stack-trace-root-cause-finder.streamlit.app
-- Logcat Error Filter : https://logcat-error-filter.streamlit.app/
+- Logcat Error Filter : https://logcat-error-filter.streamlit.app
 
 These tools help developers debug logs more efficiently.
