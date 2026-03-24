@@ -1,42 +1,53 @@
-import os
 import re
+import requests
 import streamlit as st
 
 
-st.set_page_config(page_title="Crash Log Analyzer", page_icon="🛠️", layout="centered")
+FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSemB7XiPBrg_BJx3k_m0o_JHXfbhleKEdwu78vVOVidEByCdw/formResponse"
+
+FIELD_TOOL_NAME = "entry.38392295"
+FIELD_EVENT_TYPE = "entry.1467972143"
+FIELD_INPUT_SOURCE = "entry.2139090681"
+FIELD_NOTE = "entry.2065255547"
 
 
-def track_usage() -> int:
-    """
-    Track how many times the Analyze button has been clicked.
-    Stores the count in a local text file.
+def is_keep_alive() -> bool:
+    try:
+        return str(st.query_params.get("keep_alive", "")).lower() in {"1", "true", "yes"}
+    except Exception:
+        return False
 
-    Note:
-        On Streamlit Cloud, local file storage may reset if the app restarts.
-        This is acceptable for MVP testing, but not for long-term analytics.
-    """
-    usage_file = "usage.txt"
 
-    if not os.path.exists(usage_file):
-        with open(usage_file, "w", encoding="utf-8") as f:
-            f.write("0")
+def track(tool_name: str, event_type: str, input_source: str = "none", note: str = "") -> None:
+    if is_keep_alive():
+        return
 
-    with open(usage_file, "r", encoding="utf-8") as f:
-        raw = f.read().strip()
-        count = int(raw) if raw.isdigit() else 0
+    data = {
+        FIELD_TOOL_NAME: tool_name,
+        FIELD_EVENT_TYPE: event_type,
+        FIELD_INPUT_SOURCE: input_source,
+        FIELD_NOTE: note,
+    }
 
-    count += 1
+    try:
+        requests.post(FORM_URL, data=data, timeout=5)
+    except Exception:
+        pass
 
-    with open(usage_file, "w", encoding="utf-8") as f:
-        f.write(str(count))
 
-    return count
+TOOL_NAME = "Crash Log Analyzer"
+TOOL_SLUG = "crash-log-analyzer"
+TOOL_ICON = "🛠️"
+TOOL_DESCRIPTION = "Paste your crash log below and click Analyze."
+
+EXAMPLE_LOG = """java.lang.NullPointerException
+    at com.example.app.MainActivity.onCreate(MainActivity.kt:42)
+    at android.app.Activity.performCreate(Activity.java:8000)
+    at android.app.Activity.performCreate(Activity.java:7984)
+"""
 
 
 def extract_exception(log_text: str) -> str:
-    """
-    Extract common exception types from crash logs.
-    """
     patterns = [
         r"([A-Za-z0-9_$.]+Exception)",
         r"([A-Za-z0-9_$.]+Error)",
@@ -52,11 +63,6 @@ def extract_exception(log_text: str) -> str:
 
 
 def extract_stack_frame(log_text: str) -> str:
-    """
-    Extract the first stack frame line.
-    Common Java / Android format:
-        at com.example.app.MainActivity.onCreate(MainActivity.kt:42)
-    """
     lines = log_text.splitlines()
 
     for line in lines:
@@ -68,12 +74,6 @@ def extract_stack_frame(log_text: str) -> str:
 
 
 def extract_file_and_line(stack_frame: str) -> str:
-    """
-    Extract file name and line number from a stack frame.
-    Example:
-        at com.example.app.MainActivity.onCreate(MainActivity.kt:42)
-    -> MainActivity.kt:42
-    """
     match = re.search(r"\(([^()]+:\d+)\)", stack_frame)
     if match:
         return match.group(1)
@@ -82,10 +82,6 @@ def extract_file_and_line(stack_frame: str) -> str:
 
 
 def extract_app_frame(log_text: str) -> str:
-    """
-    Try to find an app-level stack frame rather than system/framework frames.
-    This is a simple heuristic: skip common Android/Java/system packages.
-    """
     lines = log_text.splitlines()
     excluded_prefixes = (
         "at android.",
@@ -106,9 +102,6 @@ def extract_app_frame(log_text: str) -> str:
 
 
 def get_hint(exception: str) -> str:
-    """
-    Provide a simple rule-based hint based on exception type.
-    """
     hints = {
         "NullPointerException": "Object reference might be null. Check initialization and nullable handling.",
         "IndexOutOfBoundsException": "Check list or array boundaries before access.",
@@ -127,9 +120,6 @@ def get_hint(exception: str) -> str:
 
 
 def analyze_log(log_text: str) -> dict:
-    """
-    Run the full analysis and return structured results.
-    """
     exception = extract_exception(log_text)
     first_frame = extract_stack_frame(log_text)
     app_frame = extract_app_frame(log_text)
@@ -145,20 +135,27 @@ def analyze_log(log_text: str) -> dict:
     }
 
 
-st.title("🛠️ Crash Log Analyzer")
-st.caption("Paste your crash log below and click Analyze.")
+def detect_input_source(log_text: str) -> str:
+    return "example" if log_text.strip() == EXAMPLE_LOG.strip() else "custom"
 
-example_log = """java.lang.NullPointerException
-    at com.example.app.MainActivity.onCreate(MainActivity.kt:42)
-    at android.app.Activity.performCreate(Activity.java:8000)
-    at android.app.Activity.performCreate(Activity.java:7984)
-"""
+
+def is_qualified_custom_input(log_text: str, input_source: str) -> bool:
+    return input_source == "custom" and len(log_text.strip()) > 20
+
+
+st.set_page_config(page_title=TOOL_NAME, page_icon=TOOL_ICON, layout="centered")
+
+st.title(f"{TOOL_ICON} {TOOL_NAME}")
+st.caption(TOOL_DESCRIPTION)
+
+if "tracked_visitor" not in st.session_state:
+    track(TOOL_SLUG, "visitor")
+    st.session_state["tracked_visitor"] = True
 
 with st.expander("Example crash log"):
-    st.code(example_log, language="text")
+    st.code(EXAMPLE_LOG, language="text")
 
 log = st.text_area("Crash Log", height=320, placeholder="Paste your crash log here...")
-
 
 col1, col2 = st.columns([1, 1])
 
@@ -172,21 +169,33 @@ if clear_clicked:
     st.rerun()
 
 if analyze_clicked:
-    if not log.strip():
+    input_clean = log.strip()
+
+    if not input_clean:
         st.warning("Please paste a crash log first.")
     else:
-        usage_count = track_usage()
+        input_source = detect_input_source(log)
+
+        track(
+            tool_name=TOOL_SLUG,
+            event_type="click",
+            input_source=input_source,
+        )
+
         result = analyze_log(log)
 
-        st.subheader("Analysis Result")
+        if is_qualified_custom_input(log, input_source):
+            track(
+                tool_name=TOOL_SLUG,
+                event_type="qualified",
+                input_source=input_source,
+            )
 
+        st.subheader("Analysis Result")
         st.markdown(f"**Exception Type:** `{result['exception']}`")
         st.markdown(f"**First Stack Frame:** `{result['first_frame']}`")
         st.markdown(f"**App-Level Frame:** `{result['app_frame']}`")
         st.markdown(f"**File / Line:** `{result['file_and_line']}`")
         st.markdown(f"**Possible Hint:** {result['hint']}")
-
-        st.divider()
-        st.caption(f"Total analyses: {usage_count}")
 
 st.caption("If this tool helped you, please ⭐ the GitHub repo.")
